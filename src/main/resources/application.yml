@@ -1,0 +1,18 @@
+spring:
+  datasource:
+    url:
+    username:
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+server:
+  port: 8080
+mail:
+  address:
+    admin: admin@gmail.com
+jwt:
+  key: ${JWT_SECRET_KEY}
+  access-token-expiration-minutes: 1 #프론트 확인할때 시간이 너무 적으면 토큰 만료로 일단 늘려놓음
+  refresh-token-expiration-minutes: 420
