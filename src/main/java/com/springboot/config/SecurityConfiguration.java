@@ -40,8 +40,8 @@ public class SecurityConfiguration {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 // 인메모리 DB 안쓰면 이거 빼도됨
-                .headers().frameOptions().sameOrigin()
-                .and()
+//                .headers().frameOptions().sameOrigin()
+//                .and()
                 .csrf().disable()
                 .cors(Customizer.withDefaults())
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
@@ -80,7 +80,8 @@ public class SecurityConfiguration {
         configuration.setAllowedOrigins(List.of("http://localhost:3000")); // 프론트엔드 주소
         configuration.setAllowedMethods(List.of("GET", "POST", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
-        configuration.setAllowCredentials(true); // ✅ 쿠키 전송 허용
+        configuration.setExposedHeaders(List.of("Authorization")); // Authorization 헤더 노출
+        configuration.setAllowCredentials(true); // 쿠키 전송 허용
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

@@ -48,10 +48,12 @@ public class JwtTokenizer {
                 .compact();
     }
 
-    public String generateRefreshToken(String subject, Date expiration, String base64EncodedSecretKey) {
+    // 아래 부분 수정
+    public String generateRefreshToken(Map<String, Object> claims, String subject, Date expiration, String base64EncodedSecretKey) {
         Key key = getKeyFromBase64EncodedKey(base64EncodedSecretKey);
 
         return Jwts.builder()
+                .setClaims(claims)
                 .setSubject(subject)
                 .setIssuedAt(Calendar.getInstance().getTime())
                 .setExpiration(expiration)
@@ -82,6 +84,14 @@ public class JwtTokenizer {
     public Date getTokenExpiration(int expirationMinutes){
         Calendar calendar = Calendar.getInstance();
         calendar.add(Calendar.MINUTE, expirationMinutes);
+        Date expiration = calendar.getTime();
+
+        return expiration;
+    }
+
+    public Date getTokenExpiration2(int expirationMinutes){
+        Calendar calendar = Calendar.getInstance();
+        calendar.add(Calendar.SECOND, expirationMinutes);
         Date expiration = calendar.getTime();
 
         return expiration;

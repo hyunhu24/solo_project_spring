@@ -62,24 +62,32 @@ public class JwtVerificationFilter extends OncePerRequestFilter {
         } catch (ExpiredJwtException ee) {
             // 액세스 토큰이 만료되었을 때 리프레시 토큰 검증 및 재발급 로직 추가
             String refreshToken = getRefreshTokenFromCookie(request);
-            System.out.println("🔹 요청에서 받은 refreshToken: " + refreshToken);
+
             if (refreshToken != null) {
                 try {
                     // 리프레시 토큰 검증
-                    jwtTokenizer.verifySignature(refreshToken, jwtTokenizer.encodeBase64SecretKey(jwtTokenizer.getSecretKey()));
+                    Map<String, Object> claims = jwtTokenizer.getClaims(refreshToken, jwtTokenizer.encodeBase64SecretKey(jwtTokenizer.getSecretKey())).getBody();
 
                     // 새로운 액세스 토큰 발급
-                    String newAccessToken = regenerateAccessToken(refreshToken);
-                    response.setHeader("Authorization", "Bearer " + newAccessToken);
+                    Date expiration = jwtTokenizer.getTokenExpiration2(jwtTokenizer.getAccessTokenExpirationMinutes());
+                    String base64EncodedSecretKey = jwtTokenizer.encodeBase64SecretKey(jwtTokenizer.getSecretKey());
 
-                    // 새로 발급한 액세스 토큰으로 요청을 다시 처리할 수 있도록 SecurityContext에 저장
-                    Map<String, Object> claims = jwtTokenizer.getClaims(newAccessToken, jwtTokenizer.encodeBase64SecretKey(jwtTokenizer.getSecretKey())).getBody();
+                    String accessToken = jwtTokenizer.generateAccessToken(claims, (String)claims.get("username"), expiration, base64EncodedSecretKey);
+
+                    // ✅ 프론트가 확실히 받을 수 있도록 응답 바디에도 추가!
+                    response.setHeader("Authorization", "Bearer " + accessToken);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"accessToken\": \"" + accessToken + "\"}");
+
+                    System.out.println("✅ 새 AccessToken 발급: " + accessToken);
+
+                    // SecurityContext에 저장
                     setAuthenticationToContext(claims);
-
                 } catch (Exception refreshEx) {
                     request.setAttribute("exception", refreshEx);
                 }
-            } else {
+            }
+            else {
                 request.setAttribute("exception", ee); // 리프레시 토큰이 없으면 예외 설정
             }
         } catch (Exception e) {
@@ -101,25 +109,26 @@ public class JwtVerificationFilter extends OncePerRequestFilter {
         return null;
     }
 
-    // 리프레시 토큰을 이용해 새로운 액세스 토큰 발급
-    private String regenerateAccessToken(String refreshToken) {
-        String base64EncodedSecretKey = jwtTokenizer.encodeBase64SecretKey(jwtTokenizer.getSecretKey());
-        Claims claims = jwtTokenizer.getClaims(refreshToken, base64EncodedSecretKey).getBody();
-
-        Date expiration = jwtTokenizer.getTokenExpiration(jwtTokenizer.getAccessTokenExpirationMinutes());
-        return jwtTokenizer.generateAccessToken(claims, claims.getSubject(), expiration, base64EncodedSecretKey);
-    }
-
-    @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
-        String authorization = request.getHeader("Authorization");
-
-        return authorization == null || !authorization.startsWith("Bearer ");
-    }
+//    // 리프레시 토큰을 이용해 새로운 액세스 토큰 발급
+//    private String regenerateAccessToken(Map<String, Object> claims) {
+//        String base64EncodedSecretKey = jwtTokenizer.encodeBase64SecretKey(jwtTokenizer.getSecretKey());
+//        Claims claims = jwtTokenizer.getClaims(refreshToken, base64EncodedSecretKey).getBody();
+//
+//        Date expiration = jwtTokenizer.getTokenExpiration(jwtTokenizer.getAccessTokenExpirationMinutes());
+//        return jwtTokenizer.generateAccessToken(claims, claims.getSubject(), expiration, base64EncodedSecretKey);
+//    }
 
 //    @Override
-//    protected boolean shouldNotFilter(HttpServletRequest request) {
-//        return request.getMethod().equalsIgnoreCase(HttpMethod.OPTIONS.name());
+//    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+//        String authorization = request.getHeader("Authorization");
+//
+//        return authorization == null || !authorization.startsWith("Bearer ");
+//    }
+
+//    @Override
+//    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+//        // 🔥 Authorization 헤더가 없어도 필터를 실행하도록 변경!
+//        return false;
 //    }
 
     private Map<String, Object> verifyJws(HttpServletRequest request){
@@ -127,6 +136,14 @@ public class JwtVerificationFilter extends OncePerRequestFilter {
         String base64EncodedSecretKey = jwtTokenizer.encodeBase64SecretKey(jwtTokenizer.getSecretKey());
 
         Map<String, Object> claims = jwtTokenizer.getClaims(jws, base64EncodedSecretKey).getBody();
+
+        return claims;
+    }
+
+    private Map<String, Object> verifyStringJws(String refreshToken){
+        String base64EncodedSecretKey = jwtTokenizer.encodeBase64SecretKey(jwtTokenizer.getSecretKey());
+
+        Map<String, Object> claims = jwtTokenizer.getClaims(refreshToken, base64EncodedSecretKey).getBody();
 
         return claims;
     }

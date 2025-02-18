@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url:
+    url: jdbc:mysql://localhost:3306/db_solo_project
     username:
     password:
   jpa:
